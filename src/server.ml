@@ -1,7 +1,9 @@
 module Unix = UnixLabels
 
-type request = Config of Moconfig.t | Close
-type t = Request of request | Bad_request
+type req = Config of Moconfig.t | Close
+type request = Request of req | Bad_request
+type t = Unix.file_descr
+type client = Unix.file_descr
 
 let log fmt = Utils.log 0 ("Server : " ^^ fmt)
 
@@ -9,11 +11,11 @@ let parse_request req =
   match String.split_on_char '\n' req with
   | [ source; "all" ] -> Request (Config { Moconfig.source; completion = All })
   | [ _; "close" ] -> Request Close
-  | [ source; compl ] -> begin
-      match Scanf.sscanf_opt compl "part %i" Fun.id with
+  | [ source; compl ] ->
+      begin match Scanf.sscanf_opt compl "part %i" Fun.id with
       | None -> Bad_request
       | Some n -> Request (Config { Moconfig.source; completion = Part n })
-    end
+      end
   | _ -> Bad_request
 
 let read_request socket =
@@ -23,14 +25,14 @@ let read_request socket =
   log "IO read request %S" req;
   req
 
-let respond socket resp =
+let respond (socket : client) resp =
   Unix.send socket ~buf:(Bytes.of_string resp) ~pos:0 ~len:(String.length resp)
     ~mode:[]
   |> ignore;
   log "IO: write response %S" resp;
   Unix.close socket
 
-let listen ~handle =
+let build_server () : t =
   let socket =
     Unix.socket ~cloexec:true ~domain:PF_INET ~kind:SOCK_STREAM ~protocol:0
   in
@@ -40,15 +42,31 @@ let listen ~handle =
   Unix.bind socket ~addr;
   Unix.listen socket ~max:20;
   log "server socket is setup";
-  let rec loop () =
+  socket
+
+let rec listen (socket : t) : client * req =
+  let client, _client_addr = Unix.accept socket in
+  match read_request client |> parse_request with
+  | Bad_request ->
+      log "malformed response";
+      listen socket
+  | Request req -> (client, req)
+
+(* Non-blocking variant of [listen]: returns [None] at once if no connection is
+   pending, otherwise [Some (client, req)]. A zero timeout makes [select] poll
+   rather than wait. *)
+let rec try_listen (socket : t) : (client * req) option =
+  let readable, _, _ =
+    Unix.select ~read:[ socket ] ~write:[] ~except:[] ~timeout:0.
+  in
+  if readable = [] then None
+  else begin
     let client, _client_addr = Unix.accept socket in
     match read_request client |> parse_request with
     | Bad_request ->
-        log "malformed response";
-        loop ()
-    | Request req ->
-        respond client (handle req);
-        loop ()
-  in
-  let _ = loop () in
-  Unix.close socket
+        log "malformed request";
+        try_listen socket
+    | Request req -> Some (client, req)
+  end
+
+let close (socket : t) = Unix.close socket
