@@ -15,7 +15,12 @@ let run =
     | Some result ->
         Utils.log 0 "Request nb %i - Beginning analysis" !req_count;
         (* Moquery_commands.analysis hermes result config; *)
-        let items = result.Mopipeline.result.typedtree in
+        let result = result.Mopipeline.result in
+        let items =
+          match result with
+          | Motyper.Complete { typedtree; _ } -> typedtree
+          | Motyper.Partial { typedtree; _ } -> typedtree
+        in
         Response (Moparser.to_string (ref (List.rev !items)))
 
 (** [main] = Ocaml_merlin_server.main *)
