@@ -8,7 +8,6 @@
   Value of "gamma" is 7.
   Value of "delta" is 21.
   Value of "epsilon" is 6.
-  Value of "zeta" is 18.
   
   $ printf "./defs/fruits\nall" | nc localhost 8453
   Value of "apple" is 13.

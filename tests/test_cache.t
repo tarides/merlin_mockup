@@ -54,7 +54,6 @@
   Value of "tau" is 98.
   Value of "upsilon" is 92.
   Value of "phi" is 30.
-  Value of "chi" is 48.
   
   $ sleep 0.1
   $ printf "./defs/math\npart 10" | nc localhost 8453

@@ -45,6 +45,19 @@ To run the tests, execute:
 dune runtest ./tests/test.t
 ```
 
+## Debugging
+
+`scripts/debug.sh` builds the server, runs it with logs captured, sends one or
+more requests, and prints each response followed by the full server log:
+
+```bash
+scripts/debug.sh                                # tests/defs/math / all
+scripts/debug.sh tests/defs/math "part 4"       # one request
+scripts/debug.sh tests/defs/math "part 1" tests/defs/fruits all   # several
+```
+
+Log verbosity is set by `debug_lvl` in `src/debug.ml` (higher shows more).
+
 ## OxCaml portabilization
 
 The [`oxcaml`](https://github.com/tarides/merlin_mockup/tree/oxcaml) branch contains a portabilization of this mock-up to OxCaml, exploring how OxCaml's mode system can enforce data-race freedom at compile time. See the [experience report](https://github.com/tarides/merlin_mockup/tree/oxcaml/report/REPORT.md) for details.
